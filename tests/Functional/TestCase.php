@@ -198,6 +198,40 @@ abstract class TestCase extends BaseTestCase
             'worker' => 'default',
 
         ]);
+        $app['config']->set('queue.connections.rabbitmq-with-plugin', [
+            'driver' => 'rabbitmq',
+            'queue' => 'order',
+            'connection' => 'default',
+
+            'hosts' => [
+                [
+                    'host' => getenv('HOST'),
+                    'port' => getenv('PORT'),
+                    'vhost' => '/',
+                    'user' => 'guest',
+                    'password' => 'guest',
+                ],
+            ],
+
+            'options' => [
+                'ssl_options' => [
+                    'cafile' => null,
+                    'local_cert' => null,
+                    'local_key' => null,
+                    'verify_peer' => true,
+                    'passphrase' => null,
+                ],
+
+                'queue' => [
+                    'delay_strategy' => 'plugin',
+                    'delayed_exchange' => 'test-delayed-exchange',
+                    'delayed_exchange_type' => 'direct',
+                ],
+            ],
+
+            'worker' => 'default',
+
+        ]);
     }
 
     /**
