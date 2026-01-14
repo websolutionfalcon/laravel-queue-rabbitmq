@@ -1,9 +1,9 @@
 RabbitMQ Queue driver for Laravel
 ======================
-[![Latest Stable Version](https://poser.pugx.org/vladimir-yuldashev/laravel-queue-rabbitmq/v/stable?format=flat-square)](https://packagist.org/packages/vladimir-yuldashev/laravel-queue-rabbitmq)
+[![Latest Stable Version](https://poser.pugx.org/websolutionfalcon/laravel-queue-rabbitmq/v/stable?format=flat-square)](https://packagist.org/packages/websolutionfalcon/laravel-queue-rabbitmq)
 [![Build Status](https://github.com/vyuldashev/laravel-queue-rabbitmq/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/vyuldashev/laravel-queue-rabbitmq/actions/workflows/tests.yml)
-[![Total Downloads](https://poser.pugx.org/vladimir-yuldashev/laravel-queue-rabbitmq/downloads?format=flat-square)](https://packagist.org/packages/vladimir-yuldashev/laravel-queue-rabbitmq)
-[![License](https://poser.pugx.org/vladimir-yuldashev/laravel-queue-rabbitmq/license?format=flat-square)](https://packagist.org/packages/vladimir-yuldashev/laravel-queue-rabbitmq)
+[![Total Downloads](https://poser.pugx.org/websolutionfalcon/laravel-queue-rabbitmq/downloads?format=flat-square)](https://packagist.org/packages/websolutionfalcon/laravel-queue-rabbitmq)
+[![License](https://poser.pugx.org/websolutionfalcon/laravel-queue-rabbitmq/license?format=flat-square)](https://packagist.org/packages/websolutionfalcon/laravel-queue-rabbitmq)
 
 ## Support Policy
 
@@ -18,7 +18,7 @@ Only the latest version will get new features. Bug fixes will be provided using 
 You can install this package via composer using this command:
 
 ```
-composer require vladimir-yuldashev/laravel-queue-rabbitmq
+composer require websolutionfalcon/laravel-queue-rabbitmq
 ```
 
 The package will automatically register itself.
