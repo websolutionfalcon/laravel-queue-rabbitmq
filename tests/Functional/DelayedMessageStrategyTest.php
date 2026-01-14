@@ -2,6 +2,8 @@
 
 namespace VladimirYuldashev\LaravelQueueRabbitMQ\Tests\Functional;
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Queue;
 use VladimirYuldashev\LaravelQueueRabbitMQ\Queue\RabbitMQQueue;
 
@@ -13,11 +15,13 @@ use VladimirYuldashev\LaravelQueueRabbitMQ\Queue\RabbitMQQueue;
  */
 class DelayedMessageStrategyTest extends TestCase
 {
-    protected string $managementApiUrl = 'http://rabbitmq-management:15672/api';
+    protected string $managementBaseUrl = 'http://rabbitmq-management:15672';
 
     protected string $vhost = '/';
 
     protected static string $testSuffix;
+
+    protected ?Client $httpClient = null;
 
     public static function setUpBeforeClass(): void
     {
@@ -26,26 +30,47 @@ class DelayedMessageStrategyTest extends TestCase
     }
 
     /**
+     * Get HTTP client for RabbitMQ Management API
+     */
+    protected function getHttpClient(): Client
+    {
+        if ($this->httpClient === null) {
+            $this->httpClient = new Client([
+                'base_uri' => $this->managementBaseUrl,
+                'auth' => ['guest', 'guest'],
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                ],
+                'http_errors' => false, // Don't throw on 4xx/5xx
+            ]);
+        }
+
+        return $this->httpClient;
+    }
+
+    /**
      * Make a request to RabbitMQ Management API
      */
     protected function rabbitApiRequest(string $endpoint): array
     {
-        $url = $this->managementApiUrl.$endpoint;
+        try {
+            // Ensure endpoint starts with /api
+            if (! str_starts_with($endpoint, '/api')) {
+                $endpoint = '/api'.$endpoint;
+            }
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_USERPWD, 'guest:guest');
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            $response = $this->getHttpClient()->get($endpoint);
 
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+            if ($response->getStatusCode() >= 400) {
+                return [];
+            }
 
-        if ($httpCode >= 400) {
+            $body = $response->getBody()->getContents();
+
+            return json_decode($body, true) ?? [];
+        } catch (GuzzleException $e) {
             return [];
         }
-
-        return json_decode($response, true) ?? [];
     }
 
     /**
