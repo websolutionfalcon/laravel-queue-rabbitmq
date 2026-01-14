@@ -30,6 +30,12 @@ class QueueConfig
 
     protected bool $quorum = false;
 
+    protected string $delayStrategy = 'dlx';
+
+    protected string $delayedExchange = '';
+
+    protected string $delayedExchangeType = 'direct';
+
     protected array $options = [];
 
     /**
@@ -258,6 +264,57 @@ class QueueConfig
     public function setOptions(array $options): QueueConfig
     {
         $this->options = $options;
+
+        return $this;
+    }
+
+    /**
+     * Get the delay strategy
+     *
+     * @return string The delay strategy ('dlx' or 'plugin')
+     */
+    public function getDelayStrategy(): string
+    {
+        return $this->delayStrategy;
+    }
+
+    public function setDelayStrategy(string $delayStrategy): QueueConfig
+    {
+        $this->delayStrategy = $delayStrategy;
+
+        return $this;
+    }
+
+    /**
+     * Get the delayed exchange name
+     *
+     * @return string The delayed exchange name
+     */
+    public function getDelayedExchange(): string
+    {
+        return $this->delayedExchange;
+    }
+
+    public function setDelayedExchange(string $delayedExchange): QueueConfig
+    {
+        $this->delayedExchange = $delayedExchange;
+
+        return $this;
+    }
+
+    /**
+     * Get the delayed exchange type
+     *
+     * @return string The underlying exchange type for delayed exchange
+     */
+    public function getDelayedExchangeType(): string
+    {
+        return $this->delayedExchangeType;
+    }
+
+    public function setDelayedExchangeType(string $delayedExchangeType): QueueConfig
+    {
+        $this->delayedExchangeType = $delayedExchangeType;
 
         return $this;
     }

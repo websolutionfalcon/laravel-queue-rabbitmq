@@ -7,7 +7,7 @@
  * and publish messages with the x-delay header.
  */
 
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__.'/vendor/autoload.php';
 
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
@@ -44,14 +44,14 @@ try {
             false,                  // internal
             false,                  // nowait
             new AMQPTable([
-                'x-delayed-type' => 'direct'  // Underlying exchange type
+                'x-delayed-type' => 'direct',  // Underlying exchange type
             ])
         );
         echo "   ✓ Exchange '{$exchangeName}' created successfully\n";
         echo "   ✓ Plugin is working correctly!\n\n";
     } catch (\Exception $e) {
         echo "   ✗ Failed to create exchange\n";
-        echo "   Error: " . $e->getMessage() . "\n";
+        echo '   Error: '.$e->getMessage()."\n";
         echo "   This usually means the plugin is not installed or enabled.\n\n";
         throw $e;
     }
@@ -72,14 +72,14 @@ try {
     $messageBody = json_encode([
         'test' => 'delayed message',
         'timestamp' => time(),
-        'delay_seconds' => 5
+        'delay_seconds' => 5,
     ]);
 
     $message = new AMQPMessage($messageBody, [
         'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT,
         'application_headers' => new AMQPTable([
-            'x-delay' => 5000  // 5 seconds in milliseconds
-        ])
+            'x-delay' => 5000,  // 5 seconds in milliseconds
+        ]),
     ]);
 
     $channel->basic_publish($message, $exchangeName, $queueName);
@@ -88,7 +88,7 @@ try {
 
     // Get queue info
     echo "6. Checking queue status...\n";
-    list($queue, $messageCount, $consumerCount) = $channel->queue_declare($queueName, true);
+    [$queue, $messageCount, $consumerCount] = $channel->queue_declare($queueName, true);
     echo "   Queue: {$queue}\n";
     echo "   Messages ready: {$messageCount}\n";
     echo "   Consumers: {$consumerCount}\n\n";
@@ -114,7 +114,7 @@ try {
 } catch (\Exception $e) {
     echo "\n=================================================\n";
     echo "✗ TEST FAILED\n";
-    echo "Error: " . $e->getMessage() . "\n";
+    echo 'Error: '.$e->getMessage()."\n";
     echo "=================================================\n";
     exit(1);
 }

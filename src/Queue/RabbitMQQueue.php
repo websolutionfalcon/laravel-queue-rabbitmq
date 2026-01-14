@@ -26,6 +26,8 @@ use RuntimeException;
 use Throwable;
 use VladimirYuldashev\LaravelQueueRabbitMQ\Contracts\RabbitMQQueueContract;
 use VladimirYuldashev\LaravelQueueRabbitMQ\Queue\Jobs\RabbitMQJob;
+use VladimirYuldashev\LaravelQueueRabbitMQ\Queue\Strategies\DelayStrategyFactory;
+use VladimirYuldashev\LaravelQueueRabbitMQ\Queue\Strategies\DelayStrategyInterface;
 
 class RabbitMQQueue extends Queue implements QueueContract, RabbitMQQueueContract
 {
@@ -63,6 +65,11 @@ class RabbitMQQueue extends Queue implements QueueContract, RabbitMQQueueContrac
      * Holds the Configuration
      */
     protected QueueConfig $rabbitMQConfig;
+
+    /**
+     * The delay strategy instance
+     */
+    protected ?DelayStrategyInterface $delayStrategy = null;
 
     /**
      * RabbitMQQueue constructor.
@@ -153,30 +160,23 @@ class RabbitMQQueue extends Queue implements QueueContract, RabbitMQQueueContrac
      */
     public function laterRaw($delay, string $payload, $queue = null, int $attempts = 0): int|string|null
     {
-        $ttl = $this->secondsUntil($delay) * 1000;
+        $delayMs = $this->secondsUntil($delay) * 1000;
 
         // default options
         $options = ['delay' => $delay, 'attempts' => $attempts];
 
-        // When no ttl just publish a new message to the exchange or queue
-        if ($ttl <= 0) {
+        // When no delay just publish immediately
+        if ($delayMs <= 0) {
             return $this->pushRaw($payload, $queue, $options);
         }
 
-        // Create a main queue to handle delayed messages
-        [$mainDestination, $exchange, $exchangeType, $attempts] = $this->publishProperties($queue, $options);
-        $this->declareDestination($mainDestination, $exchange, $exchangeType);
+        // Get the queue name
+        $queueName = $this->getQueue($queue);
 
-        $destination = $this->getQueue($queue).'.delay.'.$ttl;
+        // Get the delay strategy and publish the delayed message
+        $strategy = $this->getDelayStrategy();
 
-        $this->declareQueue($destination, true, false, $this->getDelayQueueArguments($this->getQueue($queue), $ttl));
-
-        [$message, $correlationId] = $this->createMessage($payload, $attempts);
-
-        // Publish directly on the delayQueue, no need to publish through an exchange.
-        $this->publishBasic($message, null, $destination, true);
-
-        return $correlationId;
+        return $strategy->publishDelayedMessage($payload, $queueName, $delayMs, $attempts);
     }
 
     /**
@@ -302,6 +302,20 @@ class RabbitMQQueue extends Queue implements QueueContract, RabbitMQQueueContrac
         );
 
         return $job;
+    }
+
+    /**
+     * Get the delay strategy instance
+     */
+    protected function getDelayStrategy(): DelayStrategyInterface
+    {
+        if ($this->delayStrategy === null) {
+            $factory = new DelayStrategyFactory;
+            $strategyName = $this->getRabbitMQConfig()->getDelayStrategy();
+            $this->delayStrategy = $factory->createWithFallback($strategyName, $this);
+        }
+
+        return $this->delayStrategy;
     }
 
     /**
@@ -735,7 +749,7 @@ class RabbitMQQueue extends Queue implements QueueContract, RabbitMQQueueContrac
         return [$destination, $exchange, $exchangeType, $attempts];
     }
 
-    protected function getRabbitMQConfig(): QueueConfig
+    public function getRabbitMQConfig(): QueueConfig
     {
         return $this->rabbitMQConfig;
     }
@@ -745,7 +759,7 @@ class RabbitMQQueue extends Queue implements QueueContract, RabbitMQQueueContrac
      * @throws AMQPConnectionClosedException
      * @throws AMQPConnectionBlockedException
      */
-    protected function publishBasic($msg, $exchange = '', $destination = '', $mandatory = false, $immediate = false, $ticket = null): void
+    public function publishBasic($msg, $exchange = '', $destination = '', $mandatory = false, $immediate = false, $ticket = null): void
     {
         $this->getChannel()->basic_publish($msg, $exchange, $destination, $mandatory, $immediate, $ticket);
     }

@@ -148,6 +148,165 @@ by adding extra options.
 ],
 ```
 
+### Delayed Messages
+
+This package supports two strategies for handling delayed messages (jobs that should be processed after a specific time):
+
+#### 1. Dead Letter Exchange (DLX) Strategy (Default)
+
+The DLX strategy uses RabbitMQ's native TTL (Time-To-Live) and Dead Letter Exchange features. This is the **default strategy** and works with all RabbitMQ versions without requiring any plugins.
+
+**How it works:**
+- Creates temporary queues with TTL for each unique delay time
+- Messages expire in the delay queue and are routed to the main queue
+- Queues auto-delete after messages are processed
+
+**Configuration:**
+```php
+'connections' => [
+    'rabbitmq' => [
+        // ...
+
+        'options' => [
+            'queue' => [
+                'delay_strategy' => 'dlx', // This is the default, can be omitted
+            ],
+        ],
+    ],
+],
+```
+
+#### 2. Delayed Message Exchange Plugin Strategy
+
+The plugin strategy uses the official [`rabbitmq_delayed_message_exchange`](https://github.com/rabbitmq/rabbitmq-delayed-message-exchange) plugin for more efficient delayed message handling.
+
+**Advantages:**
+- No temporary queue proliferation (reduces queue count by ~98%)
+- Lower memory footprint
+- Dynamic delay times without creating new queues
+- Better scalability for high-volume delayed jobs
+
+**Requirements:**
+- RabbitMQ 3.6.0+ (3.8+ recommended)
+- `rabbitmq_delayed_message_exchange` plugin installed and enabled
+
+**Plugin Installation:**
+
+```bash
+# For RabbitMQ 3.x
+rabbitmq-plugins enable rabbitmq_delayed_message_exchange
+
+# For RabbitMQ 4.x, you may need to download it first:
+cd /opt/rabbitmq/plugins
+wget https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/v4.1.0/rabbitmq_delayed_message_exchange-4.1.0.ez
+rabbitmq-plugins enable rabbitmq_delayed_message_exchange
+
+# Verify the plugin is enabled
+rabbitmq-plugins list | grep delayed
+```
+
+**Docker Installation:**
+
+```dockerfile
+FROM rabbitmq:4.1-management-alpine
+
+# Download and install the plugin
+RUN apk add --no-cache wget && \
+    cd /opt/rabbitmq/plugins && \
+    wget https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/v4.1.0/rabbitmq_delayed_message_exchange-4.1.0.ez && \
+    rabbitmq-plugins enable --offline rabbitmq_delayed_message_exchange && \
+    apk del wget
+```
+
+**Configuration:**
+
+```php
+'connections' => [
+    'rabbitmq' => [
+        // ...
+
+        'options' => [
+            'queue' => [
+                'delay_strategy' => 'plugin',
+                'delayed_exchange' => env('RABBITMQ_DELAYED_EXCHANGE', 'delayed'),
+                'delayed_exchange_type' => env('RABBITMQ_DELAYED_EXCHANGE_TYPE', 'direct'),
+            ],
+        ],
+    ],
+],
+```
+
+**Configuration Options:**
+- `delay_strategy`: Either `'dlx'` (default) or `'plugin'`
+- `delayed_exchange`: Name of the delayed exchange (default: `'delayed'`)
+- `delayed_exchange_type`: Underlying exchange type - `'direct'`, `'topic'`, `'fanout'`, or `'headers'` (default: `'direct'`)
+
+**Environment Variables:**
+
+```bash
+# .env
+RABBITMQ_DELAY_STRATEGY=plugin
+RABBITMQ_DELAYED_EXCHANGE=delayed
+RABBITMQ_DELAYED_EXCHANGE_TYPE=direct
+```
+
+#### Usage Examples
+
+Both strategies use the same Laravel Queue API:
+
+```php
+use App\Jobs\ProcessPodcast;
+
+// Delay a job by 60 seconds
+ProcessPodcast::dispatch($podcast)->delay(now()->addSeconds(60));
+
+// Delay a job by 5 minutes
+ProcessPodcast::dispatch($podcast)->delay(now()->addMinutes(5));
+
+// Using laterOn with queue name
+Queue::laterOn('rabbitmq', now()->addMinutes(10), new ProcessPodcast($podcast));
+
+// Using later with default queue
+Queue::later(now()->addHour(), new ProcessPodcast($podcast));
+```
+
+#### Strategy Comparison
+
+| Feature | DLX Strategy | Plugin Strategy |
+|---------|-------------|-----------------|
+| **RabbitMQ Version** | All versions | 3.6.0+ (plugin required) |
+| **Setup** | Zero config | Requires plugin installation |
+| **Queue Count** | One per unique delay time | One per job queue |
+| **Memory Usage** | Higher (more queues) | Lower (fewer queues) |
+| **Best For** | Simple setups, few delay times | High volume, varied delays |
+| **Fallback** | N/A | Auto-falls back to DLX if plugin unavailable |
+
+#### Automatic Fallback
+
+If you configure the `plugin` strategy but the plugin is not installed, the package will **automatically fall back** to the DLX strategy. This ensures your application continues to work even if the plugin is unavailable.
+
+#### Migration from DLX to Plugin
+
+Migrating is seamless and requires no data migration:
+
+1. Install the plugin on your RabbitMQ server
+2. Update your configuration to use `'delay_strategy' => 'plugin'`
+3. Deploy the configuration change
+4. Old delay queues will auto-expire according to their TTL
+
+No existing delayed jobs are lost, and you can switch back to DLX at any time by changing the configuration.
+
+#### Performance Tips
+
+For the **plugin strategy**:
+- Use `'direct'` exchange type for simple routing
+- Use `'topic'` for pattern-based routing of delayed messages
+- Monitor the delayed exchange memory usage in RabbitMQ management UI
+
+For the **DLX strategy**:
+- Limit the variety of delay times to reduce queue count
+- Use `prioritize_delayed` option if you need priority handling
+
 ### Horizon support
 
 Starting with 8.0, this package supports [Laravel Horizon](https://laravel.com/docs/horizon) out of the box. Firstly,

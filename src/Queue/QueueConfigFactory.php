@@ -68,6 +68,17 @@ class QueueConfigFactory
             $queueConfig->setQuorum($quorum);
         }
 
+        // Feature: Delay strategy configuration
+        if ($delayStrategy = Arr::pull($queueOptions, 'delay_strategy')) {
+            $queueConfig->setDelayStrategy($delayStrategy);
+        }
+        if ($delayedExchange = Arr::pull($queueOptions, 'delayed_exchange')) {
+            $queueConfig->setDelayedExchange($delayedExchange);
+        }
+        if ($delayedExchangeType = Arr::pull($queueOptions, 'delayed_exchange_type')) {
+            $queueConfig->setDelayedExchangeType($delayedExchangeType);
+        }
+
         // All extra options not defined
         $queueConfig->setOptions($queueOptions);
     }
