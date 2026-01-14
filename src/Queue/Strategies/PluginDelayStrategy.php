@@ -164,7 +164,8 @@ class PluginDelayStrategy extends AbstractDelayStrategy
      * Check if the plugin strategy is supported
      *
      * This checks if the rabbitmq_delayed_message_exchange plugin is installed
-     * by attempting to declare a test delayed exchange.
+     * by attempting to declare a test delayed exchange on a separate channel
+     * to avoid interfering with the main queue operations.
      *
      * @return bool True if plugin is available
      */
@@ -175,11 +176,16 @@ class PluginDelayStrategy extends AbstractDelayStrategy
             return $this->pluginSupported;
         }
 
-        try {
-            // Attempt to declare a test delayed exchange (not passive)
-            $testExchange = 'test-delayed-'.Str::random(8);
+        // Create a temporary channel for plugin detection to avoid interfering with main channel
+        $connection = $this->queue->getConnection();
+        $testChannel = null;
 
-            $this->queue->getChannel()->exchange_declare(
+        try {
+            $testChannel = $connection->channel();
+            $testExchange = 'test-plugin-check-'.Str::random(8);
+
+            // Attempt to declare a test delayed exchange
+            $testChannel->exchange_declare(
                 $testExchange,
                 'x-delayed-message',
                 false,  // passive = false - actually create it
@@ -196,20 +202,13 @@ class PluginDelayStrategy extends AbstractDelayStrategy
             $this->pluginSupported = true;
 
             // Clean up test exchange
-            try {
-                $this->queue->getChannel()->exchange_delete($testExchange);
-            } catch (\Exception $e) {
-                // Ignore cleanup errors
-            }
+            $testChannel->exchange_delete($testExchange);
 
             return true;
         } catch (AMQPProtocolChannelException $e) {
             // Error code 503 = exchange type not found (plugin not installed)
             if ($e->amqp_reply_code === 503) {
                 $this->pluginSupported = false;
-
-                // Need to recreate channel as it was closed
-                $this->queue->getChannel(true);
 
                 return false;
             }
@@ -218,6 +217,15 @@ class PluginDelayStrategy extends AbstractDelayStrategy
             $this->pluginSupported = true;
 
             return true;
+        } finally {
+            // Always close the test channel to avoid leaking resources
+            if ($testChannel !== null) {
+                try {
+                    $testChannel->close();
+                } catch (\Exception $e) {
+                    // Ignore errors when closing test channel
+                }
+            }
         }
     }
 }

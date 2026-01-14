@@ -73,17 +73,22 @@ class PluginDelayStrategyTest extends TestCase
     public function testSupportsStrategyReturnsTrueWhenPluginAvailable(): void
     {
         $queue = m::mock(RabbitMQQueue::class);
-        $channel = m::mock(AMQPChannel::class);
+        $connection = m::mock('PhpAmqpLib\Connection\AbstractConnection');
+        $testChannel = m::mock(AMQPChannel::class);
 
-        $queue->shouldReceive('getChannel')->andReturn($channel);
+        $queue->shouldReceive('getConnection')->andReturn($connection);
+        $connection->shouldReceive('channel')->andReturn($testChannel);
 
         // Plugin is available - exchange_declare succeeds
-        $channel->shouldReceive('exchange_declare')
+        $testChannel->shouldReceive('exchange_declare')
             ->once()
             ->andReturn(null);
 
         // Cleanup
-        $channel->shouldReceive('exchange_delete')
+        $testChannel->shouldReceive('exchange_delete')
+            ->once();
+
+        $testChannel->shouldReceive('close')
             ->once();
 
         $strategy = new PluginDelayStrategy($queue);
@@ -96,17 +101,22 @@ class PluginDelayStrategyTest extends TestCase
     public function testSupportsStrategyReturnsFalseWhenPluginNotAvailable(): void
     {
         $queue = m::mock(RabbitMQQueue::class);
-        $channel = m::mock(AMQPChannel::class);
+        $connection = m::mock('PhpAmqpLib\Connection\AbstractConnection');
+        $testChannel = m::mock(AMQPChannel::class);
 
-        $queue->shouldReceive('getChannel')->andReturn($channel)->twice(); // once for check, once for recreation
+        $queue->shouldReceive('getConnection')->andReturn($connection);
+        $connection->shouldReceive('channel')->andReturn($testChannel);
 
         // Plugin not available - error code 503
         $exception = m::mock(AMQPProtocolChannelException::class);
         $exception->amqp_reply_code = 503;
 
-        $channel->shouldReceive('exchange_declare')
+        $testChannel->shouldReceive('exchange_declare')
             ->once()
             ->andThrow($exception);
+
+        $testChannel->shouldReceive('close')
+            ->once();
 
         $strategy = new PluginDelayStrategy($queue);
         $this->assertFalse($strategy->supportsStrategy());
