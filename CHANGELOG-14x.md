@@ -2,7 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased](https://github.com/websolutionfalcon/laravel-queue-rabbitmq/compare/v14.0.0...master)
+## [unreleased](https://github.com/websolutionfalcon/laravel-queue-rabbitmq/compare/v14.1.0...master)
+
+## [14.1.0] - 2026-05-29
+
+### Added
+- **Laravel 13 & PHP 8.5 support** (upstream [#652](https://github.com/vyuldashev/laravel-queue-rabbitmq/pull/652)): version constraints now allow `^13.0` for `illuminate/queue` and `laravel/framework`, plus `^12.0` phpunit and `^11.0` orchestra/testbench
+- **Queue metrics methods** on `RabbitMQQueue`: `pendingSize()`, `delayedSize()`, `reservedSize()`, `creationTimeOfOldestPendingJob()` for Laravel queue monitoring compatibility
+- `Consumer::stop()` now accepts an optional `$reason` parameter
+
+### Fixed
+- Send `JobPending` event on push and when delayed (upstream [#657](https://github.com/vyuldashev/laravel-queue-rabbitmq/pull/657))
+- `Consumer::$currentJob` visibility error under Laravel 13.7 (upstream [#660](https://github.com/vyuldashev/laravel-queue-rabbitmq/pull/660))
+- Scope `$currentJob` to `daemon()` to fix a false-sleep throughput regression (upstream [#665](https://github.com/vyuldashev/laravel-queue-rabbitmq/pull/665))
 
 ## [14.0.0] - 2026-01-14
 
