@@ -2,7 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased](https://github.com/websolutionfalcon/laravel-queue-rabbitmq/compare/v14.1.0...master)
+## [unreleased](https://github.com/websolutionfalcon/laravel-queue-rabbitmq/compare/v14.1.1...master)
+
+## [14.1.1] - 2026-06-18
+
+### Fixed
+- `rabbitmq:consume` crashed with `The "stop-when-empty-for" option does not exist.` on Laravel 12+. The parent `WorkCommand::gatherWorkerOptions()` reads `--stop-when-empty-for`, but the option was missing from the `ConsumeCommand` signature, so every consumer aborted on startup. Added the option (mirrors `queue:work`) and a regression test asserting the signature exposes every option `gatherWorkerOptions()` reads.
 
 ## [14.1.0] - 2026-05-29
 
